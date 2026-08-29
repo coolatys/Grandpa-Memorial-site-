@@ -37,7 +37,7 @@ export default function TimelineClient({ events }: { events: TimelineEvent[] }) 
               <span className="text-xl md:text-2xl font-serif text-accent block mb-2">{event.year}</span>
               <h3 className="text-lg md:text-xl font-medium text-stone-800 mb-3">{event.title}</h3>
               {event.description && (
-                <p className="text-stone-600 leading-relaxed">{event.description}</p>
+                <p className="text-stone-600 leading-relaxed text-justify">{event.description}</p>
               )}
               {event.photo_url && (
                 <div className={`mt-4 ${isEven ? 'md:flex md:justify-end' : ''}`}>

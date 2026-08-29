@@ -32,7 +32,8 @@ export default function Hero() {
       <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 text-white">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
           transition={{ duration: 1, delay: 0.2 }}
           className="text-stone-300 tracking-[0.2em] uppercase text-sm mb-6"
         >
@@ -41,7 +42,8 @@ export default function Hero() {
         
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
           transition={{ duration: 1, delay: 0.5 }}
           className="text-5xl md:text-7xl lg:text-8xl font-serif text-white mb-6 tracking-wide"
         >
@@ -49,12 +51,13 @@ export default function Hero() {
         </motion.h1>
         
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
           transition={{ duration: 1, delay: 0.8 }}
           className="flex flex-col items-center space-y-4"
         >
-          <p className="text-xl md:text-2xl text-stone-200 font-light italic">
+          <p className="text-xl md:text-2xl text-stone-200 font-light italic text-justify">
             Celebrating a Life Beautifully Lived
           </p>
           <div className="flex items-center space-x-4 text-stone-300">

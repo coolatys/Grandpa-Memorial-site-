@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import GalleryClient from './GalleryClient';
+import * as motion from 'framer-motion/client';
 
 export default async function GallerySection() {
   const { data: photos } = await supabase
@@ -15,7 +16,15 @@ export default async function GallerySection() {
 
   return (
     <section id="gallery" className="py-24 px-4 max-w-7xl mx-auto min-h-[50vh]">
-      <h2 className="text-4xl md:text-5xl font-serif text-center mb-12 text-primary">Photo Gallery</h2>
+      <motion.h2 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="text-4xl md:text-5xl font-serif text-center mb-12 text-primary"
+      >
+        Photo Gallery
+      </motion.h2>
       <GalleryClient photos={displayPhotos as any[]} />
     </section>
   );

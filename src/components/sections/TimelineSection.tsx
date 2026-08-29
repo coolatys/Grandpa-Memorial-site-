@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import TimelineClient from './TimelineClient';
+import * as motion from 'framer-motion/client';
 
 export default async function TimelineSection() {
   const { data: events } = await supabase
@@ -16,7 +17,15 @@ export default async function TimelineSection() {
   return (
     <section id="timeline" className="py-24 px-4 bg-stone-50 min-h-[50vh]">
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-4xl md:text-5xl font-serif text-center mb-16 text-primary">Life Timeline</h2>
+        <motion.h2 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-4xl md:text-5xl font-serif text-center mb-16 text-primary"
+        >
+          Life Timeline
+        </motion.h2>
         <TimelineClient events={displayEvents as any[]} />
       </div>
     </section>

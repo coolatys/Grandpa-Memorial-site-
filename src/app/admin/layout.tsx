@@ -45,6 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <h2 className="text-xl font-serif text-primary mb-8">Admin Panel</h2>
         <nav className="space-y-2 flex-1">
           <Link href="/admin" className="block py-2 px-3 rounded hover:bg-stone-50 text-stone-700">Dashboard</Link>
+          <Link href="/admin/tributes" className="block py-2 px-3 rounded hover:bg-stone-50 text-stone-700">Manage Tributes</Link>
           <Link href="/admin/memories" className="block py-2 px-3 rounded hover:bg-stone-50 text-stone-700">Moderate Memories</Link>
           <Link href="/admin/family-tree" className="block py-2 px-3 rounded hover:bg-stone-50 text-stone-700">Moderate Family</Link>
         </nav>

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import ServiceClient from './ServiceClient';
+import * as motion from 'framer-motion/client';
 
 export default async function ServiceSection() {
   const { data: settings } = await supabase
@@ -29,8 +30,23 @@ export default async function ServiceSection() {
 
   return (
     <section id="service" className="py-24 px-4 max-w-4xl mx-auto min-h-[50vh]">
-      <h2 className="text-4xl md:text-5xl font-serif text-center mb-8 text-primary">Service Details</h2>
-      <ServiceClient settings={displaySettings as any} events={displayEvents as any[]} />
+      <motion.h2 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="text-4xl md:text-5xl font-serif text-center mb-8 text-primary"
+      >
+        Service Details
+      </motion.h2>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+      >
+        <ServiceClient settings={displaySettings as any} events={displayEvents as any[]} />
+      </motion.div>
     </section>
   );
 }

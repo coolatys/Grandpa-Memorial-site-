@@ -31,6 +31,20 @@ export type Database = {
         Insert: Omit<Database['public']['Tables']['memories']['Row'], 'id' | 'created_at'> & { id?: string; created_at?: string }
         Update: Partial<Database['public']['Tables']['memories']['Insert']>
       }
+      tributes: {
+        Row: {
+          id: string
+          author_name: string
+          author_relationship: string | null
+          title: string | null
+          message: string
+          photo_url: string | null
+          sort_order: number
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['tributes']['Row'], 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Database['public']['Tables']['tributes']['Insert']>
+      }
       gallery_photos: {
         Row: {
           id: string

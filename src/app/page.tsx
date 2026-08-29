@@ -2,6 +2,7 @@ import Hero from '@/components/Hero';
 import BiographySection from '@/components/sections/BiographySection';
 import TimelineSection from '@/components/sections/TimelineSection';
 import GallerySection from '@/components/sections/GallerySection';
+import TributesSection from '@/components/sections/TributesSection';
 import MemoriesSection from '@/components/sections/MemoriesSection';
 import ServiceSection from '@/components/sections/ServiceSection';
 
@@ -16,6 +17,7 @@ export default function Home() {
       <BiographySection />
       <TimelineSection />
       <GallerySection />
+      <TributesSection />
       <MemoriesSection />
       <ServiceSection />
     </>
