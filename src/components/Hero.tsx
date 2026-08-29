@@ -31,39 +31,38 @@ export default function Hero() {
       {/* Hero Content */}
       <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 text-white">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.2 }}
+          className="text-stone-300 tracking-[0.2em] uppercase text-sm mb-6"
         >
-          <h2 className="text-sm md:text-base tracking-[0.3em] uppercase mb-4 text-stone-200">
-            In Loving Memory
-          </h2>
+          A Legacy of Faith, Love, and Purpose
         </motion.div>
         
         <motion.h1
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.4 }}
-          className="text-5xl md:text-7xl lg:text-8xl font-serif mb-6"
+          transition={{ duration: 1, delay: 0.5 }}
+          className="text-5xl md:text-7xl lg:text-8xl font-serif text-white mb-6 tracking-wide"
         >
-          Grandpa's Name
+          Pa JOK John
         </motion.h1>
-
+        
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 0.8 }}
-          className="w-16 h-px bg-white/50 mb-6"
-        />
-
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 1 }}
-          className="text-lg md:text-2xl font-light text-stone-200 tracking-wide"
+          className="flex flex-col items-center space-y-4"
         >
-          1930 — 2026
-        </motion.p>
+          <p className="text-xl md:text-2xl text-stone-200 font-light italic">
+            Celebrating a Life Beautifully Lived
+          </p>
+          <div className="flex items-center space-x-4 text-stone-300">
+            <span>4 February 1948</span>
+            <span className="w-2 h-2 rounded-full bg-accent"></span>
+            <span>29 June 2026</span>
+          </div>
+        </motion.div>
       </div>
     </section>
   );

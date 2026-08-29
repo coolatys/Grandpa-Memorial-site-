@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { name: 'Biography', href: '/#biography' },
   { name: 'Timeline', href: '/#timeline' },
   { name: 'Gallery', href: '/#gallery' },
-  { name: 'Tribute', href: '/#tribute' },
+  { name: 'Memories', href: '/#memories' },
   { name: 'Family Tree', href: '/family-tree' },
   { name: 'Service', href: '/#service' },
 ];

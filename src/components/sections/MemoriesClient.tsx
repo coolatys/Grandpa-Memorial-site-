@@ -14,7 +14,7 @@ type Post = {
   created_at: string;
 };
 
-export default function TributeClient({ posts }: { posts: Post[] }) {
+export default function MemoriesClient({ posts }: { posts: Post[] }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -25,16 +25,16 @@ export default function TributeClient({ posts }: { posts: Post[] }) {
 
     const formData = new FormData(e.currentTarget);
     const data = {
-      author_name: formData.get('author_name') as string,
-      author_relationship: formData.get('author_relationship') as string || null,
+      author_name: formData.get('name') as string,
+      author_relationship: formData.get('relationship') as string || null,
       title: formData.get('title') as string || null,
       message: formData.get('message') as string,
-      photo_url: formData.get('photo_url') as string || null, // In a real app, handle file uploads to Supabase storage
+      photo_url: formData.get('photo_url') as string || null,
       status: 'pending' as const,
     };
 
     // @ts-ignore
-    const { error } = await supabase.from('tributes').insert(data);
+    const { error } = await supabase.from('memories').insert(data);
 
     setIsSubmitting(false);
     if (!error) {

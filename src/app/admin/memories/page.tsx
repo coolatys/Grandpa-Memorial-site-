@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-export default function AdminTributes() {
+export default function AdminMemories() {
   const [posts, setPosts] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from('tributes')
+    supabase.from('memories')
       .select('*')
       .eq('status', 'pending')
       .then(({ data }) => {
@@ -17,7 +17,7 @@ export default function AdminTributes() {
 
   const handleUpdate = async (id: string, status: 'approved' | 'rejected') => {
     // @ts-ignore
-    await supabase.from('tributes').update({ status }).eq('id', id);
+    await supabase.from('memories').update({ status }).eq('id', id);
     setPosts(posts.filter(p => p.id !== id));
   };
 
