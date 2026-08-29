@@ -1,9 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import GalleryClient from './GalleryClient';
 
-export const revalidate = 60;
-
-export default async function GalleryPage() {
+export default async function GallerySection() {
   const { data: photos } = await supabase
     .from('gallery_photos')
     .select('*')
@@ -16,9 +14,9 @@ export default async function GalleryPage() {
   ];
 
   return (
-    <div className="pt-24 pb-16 px-4 max-w-7xl mx-auto min-h-screen">
-      <h1 className="text-4xl md:text-5xl font-serif text-center mb-12 text-primary">Photo Gallery</h1>
+    <section id="gallery" className="py-24 px-4 max-w-7xl mx-auto min-h-[50vh]">
+      <h2 className="text-4xl md:text-5xl font-serif text-center mb-12 text-primary">Photo Gallery</h2>
       <GalleryClient photos={displayPhotos as any[]} />
-    </div>
+    </section>
   );
 }

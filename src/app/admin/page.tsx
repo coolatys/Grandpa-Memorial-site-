@@ -10,9 +10,9 @@ export default function AdminDashboard() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-stone-100">
-          <h3 className="font-medium text-lg mb-2">Memory Wall Moderation</h3>
+          <h3 className="font-medium text-lg mb-2">Tribute Moderation</h3>
           <p className="text-sm text-stone-500 mb-4">Review pending tributes and condolences.</p>
-          <a href="/admin/memory-wall" className="text-primary hover:underline text-sm">Go to Moderation &rarr;</a>
+          <a href="/admin/tribute" className="text-primary hover:underline text-sm">Go to Moderation &rarr;</a>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow-sm border border-stone-100">

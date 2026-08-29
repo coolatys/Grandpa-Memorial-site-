@@ -5,13 +5,13 @@ import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 const NAV_LINKS = [
-  { name: 'Home', href: '/' },
-  { name: 'Biography', href: '/biography' },
-  { name: 'Timeline', href: '/timeline' },
-  { name: 'Gallery', href: '/gallery' },
-  { name: 'Memory Wall', href: '/memory-wall' },
+  { name: 'Home', href: '/#hero' },
+  { name: 'Biography', href: '/#biography' },
+  { name: 'Timeline', href: '/#timeline' },
+  { name: 'Gallery', href: '/#gallery' },
+  { name: 'Tribute', href: '/#tribute' },
   { name: 'Family Tree', href: '/family-tree' },
-  { name: 'Service', href: '/service' },
+  { name: 'Service', href: '/#service' },
 ];
 
 export default function Navbar() {
@@ -36,14 +36,6 @@ export default function Navbar() {
                   className="relative py-2 text-sm text-stone-300 hover:text-white transition-colors uppercase tracking-widest"
                 >
                   {link.name}
-                  {isActive && (
-                    <motion.div
-                      layoutId="active-nav"
-                      className="absolute bottom-0 left-0 right-0 h-px bg-white"
-                      initial={false}
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    />
-                  )}
                 </Link>
               );
             })}

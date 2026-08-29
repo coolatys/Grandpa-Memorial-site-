@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-export default function AdminMemoryWall() {
+export default function AdminTributes() {
   const [posts, setPosts] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from('memory_wall_posts')
+    supabase.from('tributes')
       .select('*')
       .eq('status', 'pending')
       .then(({ data }) => {
@@ -17,7 +17,7 @@ export default function AdminMemoryWall() {
 
   const handleUpdate = async (id: string, status: 'approved' | 'rejected') => {
     // @ts-ignore
-    await supabase.from('memory_wall_posts').update({ status }).eq('id', id);
+    await supabase.from('tributes').update({ status }).eq('id', id);
     setPosts(posts.filter(p => p.id !== id));
   };
 

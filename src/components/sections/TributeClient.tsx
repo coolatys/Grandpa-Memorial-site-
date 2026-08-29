@@ -14,7 +14,7 @@ type Post = {
   created_at: string;
 };
 
-export default function MemoryWallClient({ posts }: { posts: Post[] }) {
+export default function TributeClient({ posts }: { posts: Post[] }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -34,7 +34,7 @@ export default function MemoryWallClient({ posts }: { posts: Post[] }) {
     };
 
     // @ts-ignore
-    const { error } = await supabase.from('memory_wall_posts').insert(data);
+    const { error } = await supabase.from('tributes').insert(data);
 
     setIsSubmitting(false);
     if (!error) {

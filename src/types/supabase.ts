@@ -17,7 +17,7 @@ export type Database = {
         Insert: Omit<Database['public']['Tables']['family_members']['Row'], 'id' | 'created_at'> & { id?: string; created_at?: string }
         Update: Partial<Database['public']['Tables']['family_members']['Insert']>
       }
-      memory_wall_posts: {
+      tributes: {
         Row: {
           id: string
           author_name: string
@@ -28,8 +28,8 @@ export type Database = {
           status: 'pending' | 'approved' | 'rejected'
           created_at: string
         }
-        Insert: Omit<Database['public']['Tables']['memory_wall_posts']['Row'], 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Database['public']['Tables']['memory_wall_posts']['Insert']>
+        Insert: Omit<Database['public']['Tables']['tributes']['Row'], 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Database['public']['Tables']['tributes']['Insert']>
       }
       gallery_photos: {
         Row: {

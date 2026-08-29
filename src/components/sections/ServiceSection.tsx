@@ -1,9 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import ServiceClient from './ServiceClient';
 
-export const revalidate = 60;
-
-export default async function ServicePage() {
+export default async function ServiceSection() {
   const { data: settings } = await supabase
     .from('site_settings')
     .select('*')
@@ -30,9 +28,9 @@ export default async function ServicePage() {
   ];
 
   return (
-    <div className="pt-24 pb-16 px-4 max-w-4xl mx-auto min-h-screen">
-      <h1 className="text-4xl md:text-5xl font-serif text-center mb-8 text-primary">Service Details</h1>
+    <section id="service" className="py-24 px-4 max-w-4xl mx-auto min-h-[50vh]">
+      <h2 className="text-4xl md:text-5xl font-serif text-center mb-8 text-primary">Service Details</h2>
       <ServiceClient settings={displaySettings as any} events={displayEvents as any[]} />
-    </div>
+    </section>
   );
 }

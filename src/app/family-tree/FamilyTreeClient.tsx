@@ -13,11 +13,11 @@ type FamilyMember = {
   relationship_to_grandpa: string;
   parent_id: string | null;
   spouse_id: string | null;
+  photo_url?: string | null;
 };
 
 // Simple recursive function to build tree data
 const buildTreeData = (members: FamilyMember[], rootId: string | null = null): any => {
-  // If no rootId is provided, find the person with no parent (usually Grandpa)
   let rootNode = members.find(m => m.id === rootId);
   if (!rootNode) {
     rootNode = members.find(m => m.parent_id === null && m.spouse_id === null) || members[0];
@@ -32,6 +32,7 @@ const buildTreeData = (members: FamilyMember[], rootId: string | null = null): a
     name: rootNode.full_name,
     attributes: {
       relationship: rootNode.relationship_to_grandpa,
+      photo_url: rootNode.photo_url,
       ...(spouse && { spouse: spouse.full_name }),
     },
     children: children.map(child => buildTreeData(members, child.id)),
@@ -42,6 +43,9 @@ export default function FamilyTreeClient({ members }: { members: FamilyMember[] 
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [translate, setTranslate] = useState({ x: 400, y: 100 });
 
   const treeData = useMemo(() => buildTreeData(members), [members]);
 
@@ -56,6 +60,7 @@ export default function FamilyTreeClient({ members }: { members: FamilyMember[] 
       relationship_to_grandpa: formData.get('relationship') as string,
       parent_id: formData.get('parent_id') as string || null,
       submitted_by_email: formData.get('email') as string,
+      photo_url: formData.get('photo_url') as string || null,
       status: 'pending' as const,
     };
 
@@ -70,6 +75,13 @@ export default function FamilyTreeClient({ members }: { members: FamilyMember[] 
     } else {
       alert('Failed to submit. Please try again.');
     }
+  };
+
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 3));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.2));
+  const handleReset = () => {
+    setZoomLevel(1);
+    setTranslate({ x: 400, y: 100 });
   };
 
   return (
@@ -115,6 +127,11 @@ export default function FamilyTreeClient({ members }: { members: FamilyMember[] 
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Photo URL (Optional but encouraged)</label>
+              <input name="photo_url" type="url" placeholder="https://example.com/photo.jpg" className="w-full px-3 py-2 border border-stone-200 rounded-md focus:ring-1 focus:ring-primary bg-stone-50" />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">Your Email (for follow-up) *</label>
               <input required name="email" type="email" className="w-full px-3 py-2 border border-stone-200 rounded-md focus:ring-1 focus:ring-primary bg-stone-50" />
             </div>
@@ -130,31 +147,63 @@ export default function FamilyTreeClient({ members }: { members: FamilyMember[] 
         </div>
       )}
 
-      {/* Tree Visualization */}
-      <div className="w-full h-[600px] bg-white rounded-lg shadow-sm border border-stone-100 overflow-hidden relative">
-        <Tree
-          data={treeData}
-          orientation="vertical"
-          pathFunc="step"
-          translate={{ x: 400, y: 100 }}
-          nodeSize={{ x: 200, y: 100 }}
-          renderCustomNodeElement={(rd3tProps) => {
-            const { nodeDatum, toggleNode } = rd3tProps;
-            return (
-              <g>
-                <rect width="160" height="60" x="-80" y="-30" fill="#EAE6DF" rx="8" stroke="#2F4538" strokeWidth="2" onClick={toggleNode} />
-                <text fill="#1c1917" strokeWidth="0" x="0" y="-5" textAnchor="middle" className="text-sm font-medium font-sans">
-                  {nodeDatum.name}
-                </text>
-                {nodeDatum.attributes?.relationship && (
-                  <text fill="#57534e" strokeWidth="0" x="0" y="15" textAnchor="middle" className="text-xs font-sans">
-                    {nodeDatum.attributes.relationship}
+      {/* Tree Visualization with controls */}
+      <div className="w-full bg-white rounded-lg shadow-sm border border-stone-100 overflow-hidden relative group">
+        
+        {/* Controls Overlay */}
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-white/80 p-2 rounded-lg shadow-sm border border-stone-200 backdrop-blur-sm">
+          <button onClick={handleZoomIn} className="w-8 h-8 flex items-center justify-center bg-white border border-stone-200 rounded text-stone-700 hover:bg-stone-50 font-bold">+</button>
+          <button onClick={handleZoomOut} className="w-8 h-8 flex items-center justify-center bg-white border border-stone-200 rounded text-stone-700 hover:bg-stone-50 font-bold">-</button>
+          <button onClick={handleReset} className="w-8 h-8 flex items-center justify-center bg-white border border-stone-200 rounded text-stone-700 hover:bg-stone-50 text-xs">Reset</button>
+        </div>
+
+        <div className="w-full h-[700px] cursor-grab active:cursor-grabbing">
+          <Tree
+            data={treeData}
+            orientation="vertical"
+            pathFunc="step"
+            zoom={zoomLevel}
+            translate={translate}
+            nodeSize={{ x: 250, y: 160 }}
+            enableLegacyTransitions={true}
+            transitionDuration={400}
+            renderCustomNodeElement={(rd3tProps) => {
+              const { nodeDatum, toggleNode } = rd3tProps;
+              const photo = nodeDatum.attributes?.photo_url;
+              const defaultAvatar = "https://images.unsplash.com/photo-1544502062-f82887f03d1c?q=80&w=200&auto=format&fit=crop"; // Placeholder silhouette lookalike
+              
+              return (
+                <g onClick={toggleNode} className="cursor-pointer">
+                  {/* Card Background */}
+                  <rect width="180" height="90" x="-90" y="-45" fill="#EAE6DF" rx="12" stroke="#2F4538" strokeWidth="2" />
+                  
+                  {/* Image/Avatar */}
+                  <clipPath id={`clip-${nodeDatum.name}`}>
+                    <circle cx="-50" cy="0" r="24" />
+                  </clipPath>
+                  <circle cx="-50" cy="0" r="26" fill="#fff" stroke="#2F4538" strokeWidth="1" />
+                  <image 
+                    href={(photo as string) || defaultAvatar}
+                    x="-74" y="-24" 
+                    height="48" width="48" 
+                    clipPath={`url(#clip-${nodeDatum.name})`} 
+                    preserveAspectRatio="xMidYMid slice"
+                  />
+
+                  {/* Text */}
+                  <text fill="#1c1917" strokeWidth="0" x="-10" y="-5" textAnchor="start" className="text-sm font-semibold font-sans">
+                    {nodeDatum.name}
                   </text>
-                )}
-              </g>
-            );
-          }}
-        />
+                  {nodeDatum.attributes?.relationship && (
+                    <text fill="#57534e" strokeWidth="0" x="-10" y="12" textAnchor="start" className="text-xs font-sans">
+                      {nodeDatum.attributes.relationship}
+                    </text>
+                  )}
+                </g>
+              );
+            }}
+          />
+        </div>
       </div>
     </div>
   );

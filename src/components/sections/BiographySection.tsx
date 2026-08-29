@@ -1,8 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export const revalidate = 60; // Revalidate every minute
-
-export default async function BiographyPage() {
+export default async function BiographySection() {
   const { data: sections } = await supabase
     .from('biography_sections')
     .select('*')
@@ -14,17 +12,17 @@ export default async function BiographyPage() {
   ];
 
   return (
-    <div className="pt-24 pb-16 px-4 max-w-4xl mx-auto">
-      <h1 className="text-4xl md:text-5xl font-serif text-center mb-12 text-primary">Biography</h1>
+    <section id="biography" className="py-24 px-4 max-w-4xl mx-auto min-h-[50vh]">
+      <h2 className="text-4xl md:text-5xl font-serif text-center mb-12 text-primary">Biography</h2>
       
       <div className="space-y-16">
         {displaySections.map((section) => (
-          <section key={section.id} className="prose prose-stone lg:prose-lg mx-auto">
-            <h2 className="text-2xl font-serif text-accent mb-4">{section.heading}</h2>
+          <div key={section.id} className="prose prose-stone lg:prose-lg mx-auto">
+            <h3 className="text-2xl font-serif text-accent mb-4">{section.heading}</h3>
             <div dangerouslySetInnerHTML={{ __html: section.body }} className="text-stone-700 leading-relaxed" />
-          </section>
+          </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

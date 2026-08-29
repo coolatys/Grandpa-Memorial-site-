@@ -1,17 +1,23 @@
 import Hero from '@/components/Hero';
+import BiographySection from '@/components/sections/BiographySection';
+import TimelineSection from '@/components/sections/TimelineSection';
+import GallerySection from '@/components/sections/GallerySection';
+import TributeSection from '@/components/sections/TributeSection';
+import ServiceSection from '@/components/sections/ServiceSection';
+
+export const revalidate = 60;
 
 export default function Home() {
   return (
     <>
-      <Hero />
-      <section className="py-24 px-4 bg-stone-50">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-serif text-primary mb-6">A Life Well Lived</h2>
-          <p className="text-lg text-stone-600 leading-relaxed mb-8">
-            Welcome to the digital memorial for our beloved grandfather. This site serves as a place to share memories, trace our roots, and celebrate his extraordinary journey.
-          </p>
-        </div>
-      </section>
+      <div id="hero">
+        <Hero />
+      </div>
+      <BiographySection />
+      <TimelineSection />
+      <GallerySection />
+      <TributeSection />
+      <ServiceSection />
     </>
   );
 }

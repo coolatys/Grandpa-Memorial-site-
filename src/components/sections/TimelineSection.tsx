@@ -1,9 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import TimelineClient from './TimelineClient';
 
-export const revalidate = 60;
-
-export default async function TimelinePage() {
+export default async function TimelineSection() {
   const { data: events } = await supabase
     .from('timeline_events')
     .select('*')
@@ -16,9 +14,11 @@ export default async function TimelinePage() {
   ];
 
   return (
-    <div className="pt-24 pb-16 px-4 max-w-5xl mx-auto min-h-screen">
-      <h1 className="text-4xl md:text-5xl font-serif text-center mb-16 text-primary">Life Timeline</h1>
-      <TimelineClient events={displayEvents as any[]} />
-    </div>
+    <section id="timeline" className="py-24 px-4 bg-stone-50 min-h-[50vh]">
+      <div className="max-w-5xl mx-auto">
+        <h2 className="text-4xl md:text-5xl font-serif text-center mb-16 text-primary">Life Timeline</h2>
+        <TimelineClient events={displayEvents as any[]} />
+      </div>
+    </section>
   );
 }
