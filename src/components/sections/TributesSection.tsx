@@ -20,7 +20,7 @@ export default async function TributesSection() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl font-serif mb-4 text-primary">Tributes</h2>
-          <p className="text-stone-600 max-w-2xl mx-auto text-lg text-justify">
+          <p className="text-stone-600 max-w-2xl mx-auto text-lg text-justify hyphens-auto">
             A reflection on the life of Pa JOK John, as shared by his loving family.
           </p>
         </motion.div>
@@ -41,7 +41,7 @@ export default async function TributesSection() {
                 <h3 className="text-2xl font-serif text-primary mb-4">{post.title}</h3>
               )}
               
-              <div className="text-stone-700 text-lg leading-relaxed whitespace-pre-wrap text-justify italic font-serif">
+              <div className="text-stone-700 text-lg leading-relaxed whitespace-pre-wrap text-justify hyphens-auto italic font-serif">
                 "{post.message}"
               </div>
               

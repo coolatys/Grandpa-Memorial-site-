@@ -64,7 +64,7 @@ export default async function BiographySection() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: false, margin: "-50px" }}
                     transition={{ duration: 0.5, delay: Math.min(i * 0.1, 0.5) }}
-                    className="text-stone-700 leading-relaxed text-justify m-0"
+                    className="text-stone-700 leading-relaxed text-justify hyphens-auto m-0"
                     dangerouslySetInnerHTML={{ __html: para }}
                   />
                 ))}

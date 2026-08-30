@@ -30,15 +30,15 @@ export default function AdminFamilyTree() {
       ) : (
         <div className="space-y-4">
           {members.map(member => (
-            <div key={member.id} className="bg-white p-4 rounded-lg shadow-sm border border-stone-100 flex justify-between items-center">
+            <div key={member.id} className="bg-white p-4 rounded-lg shadow-sm border border-stone-100 flex flex-col sm:flex-row justify-between items-start sm:items-center">
               <div>
                 <div className="font-medium">{member.full_name}</div>
                 <div className="text-stone-600 text-sm mt-1">Relationship: {member.relationship_to_grandpa}</div>
                 <div className="text-stone-500 text-xs mt-1">Email: {member.submitted_by_email}</div>
               </div>
-              <div className="flex gap-2 ml-4">
-                <button onClick={() => handleUpdate(member.id, 'approved')} className="bg-green-100 text-green-700 px-3 py-1 rounded text-sm hover:bg-green-200">Approve</button>
-                <button onClick={() => handleUpdate(member.id, 'rejected')} className="bg-red-100 text-red-700 px-3 py-1 rounded text-sm hover:bg-red-200">Reject</button>
+              <div className="flex gap-2 mt-4 sm:mt-0 sm:ml-4 w-full sm:w-auto">
+                <button onClick={() => handleUpdate(member.id, 'approved')} className="flex-1 sm:flex-none bg-green-100 text-green-700 px-3 py-2 rounded text-sm hover:bg-green-200 text-center">Approve</button>
+                <button onClick={() => handleUpdate(member.id, 'rejected')} className="flex-1 sm:flex-none bg-red-100 text-red-700 px-3 py-2 rounded text-sm hover:bg-red-200 text-center">Reject</button>
               </div>
             </div>
           ))}

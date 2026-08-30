@@ -67,7 +67,7 @@ export default function TimelineClient({ events }: { events: TimelineEvent[] }) 
               <h3 className="text-xl md:text-2xl font-medium text-stone-800 mb-4">{event.title}</h3>
               {event.description && (
                 <div 
-                  className="text-stone-600 leading-relaxed text-justify space-y-4"
+                  className="text-stone-600 leading-relaxed text-justify hyphens-auto space-y-4"
                   dangerouslySetInnerHTML={{ __html: event.description }}
                 />
               )}

@@ -148,16 +148,17 @@ export default function FamilyTreeClient({ members }: { members: FamilyMember[] 
       )}
 
       {/* Tree Visualization with controls */}
-      <div className="w-full bg-white rounded-lg shadow-sm border border-stone-100 overflow-hidden relative group">
+      <div className="w-full bg-white rounded-lg shadow-sm border border-stone-100 overflow-hidden relative group flex flex-col">
         
-        {/* Controls Overlay */}
-        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-white/80 p-2 rounded-lg shadow-sm border border-stone-200 backdrop-blur-sm">
-          <button onClick={handleZoomIn} className="w-8 h-8 flex items-center justify-center bg-white border border-stone-200 rounded text-stone-700 hover:bg-stone-50 font-bold">+</button>
-          <button onClick={handleZoomOut} className="w-8 h-8 flex items-center justify-center bg-white border border-stone-200 rounded text-stone-700 hover:bg-stone-50 font-bold">-</button>
-          <button onClick={handleReset} className="w-8 h-8 flex items-center justify-center bg-white border border-stone-200 rounded text-stone-700 hover:bg-stone-50 text-xs">Reset</button>
+        {/* Controls Bar (Moved outside canvas to prevent overlap) */}
+        <div className="flex justify-end gap-3 p-3 bg-stone-50 border-b border-stone-200">
+          <button onClick={handleZoomIn} className="w-12 h-12 flex items-center justify-center bg-white border border-stone-300 rounded shadow-sm text-stone-700 hover:bg-stone-50 font-bold text-xl active:bg-stone-100" aria-label="Zoom In">+</button>
+          <button onClick={handleZoomOut} className="w-12 h-12 flex items-center justify-center bg-white border border-stone-300 rounded shadow-sm text-stone-700 hover:bg-stone-50 font-bold text-xl active:bg-stone-100" aria-label="Zoom Out">-</button>
+          <button onClick={handleReset} className="w-12 h-12 flex items-center justify-center bg-white border border-stone-300 rounded shadow-sm text-stone-700 hover:bg-stone-50 text-sm font-medium active:bg-stone-100">Reset</button>
         </div>
 
-        <div className="w-full h-[700px] cursor-grab active:cursor-grabbing">
+        {/* touch-none prevents the whole page from scrolling when dragging the tree on mobile */}
+        <div className="w-full h-[600px] md:h-[700px] cursor-grab active:cursor-grabbing touch-none">
           <Tree
             data={treeData}
             orientation="vertical"

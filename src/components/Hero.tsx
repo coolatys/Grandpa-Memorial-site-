@@ -1,16 +1,28 @@
 'use client';
 
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 export default function Hero() {
   const ref = useRef(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile(); // Check on mount
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ['start start', 'end start'],
   });
 
-  const y = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
+  const desktopY = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
+  const mobileY = useTransform(scrollYProgress, [0, 1], ['0%', '10%']);
+  
+  const y = isMobile ? mobileY : desktopY;
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
   return (

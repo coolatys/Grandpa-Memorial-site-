@@ -20,7 +20,7 @@ export default async function MemoriesSection() {
           className="text-center mb-12"
         >
           <h2 className="text-4xl md:text-5xl font-serif mb-4 text-primary">Guestbook & Memories</h2>
-          <p className="text-stone-600 max-w-2xl mx-auto text-lg text-justify">
+          <p className="text-stone-600 max-w-2xl mx-auto text-lg text-justify hyphens-auto">
             Share your favorite memories, condolences, and personal stories with the family.
           </p>
         </motion.div>

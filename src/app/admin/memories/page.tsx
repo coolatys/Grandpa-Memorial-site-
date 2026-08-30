@@ -30,15 +30,15 @@ export default function AdminMemories() {
       ) : (
         <div className="space-y-4">
           {posts.map(post => (
-            <div key={post.id} className="bg-white p-4 rounded-lg shadow-sm border border-stone-100 flex justify-between items-start">
+            <div key={post.id} className="bg-white p-4 rounded-lg shadow-sm border border-stone-100 flex flex-col sm:flex-row justify-between items-start">
               <div>
                 <div className="font-medium">{post.author_name} {post.author_relationship ? `(${post.author_relationship})` : ''}</div>
                 <div className="font-serif mt-1">{post.title}</div>
                 <div className="text-stone-600 mt-2 whitespace-pre-wrap text-sm">{post.message}</div>
               </div>
-              <div className="flex gap-2 ml-4 flex-shrink-0">
-                <button onClick={() => handleUpdate(post.id, 'approved')} className="bg-green-100 text-green-700 px-3 py-1 rounded text-sm hover:bg-green-200">Approve</button>
-                <button onClick={() => handleUpdate(post.id, 'rejected')} className="bg-red-100 text-red-700 px-3 py-1 rounded text-sm hover:bg-red-200">Reject</button>
+              <div className="flex gap-2 mt-4 sm:mt-0 sm:ml-4 flex-shrink-0 w-full sm:w-auto">
+                <button onClick={() => handleUpdate(post.id, 'approved')} className="flex-1 sm:flex-none bg-green-100 text-green-700 px-3 py-2 rounded text-sm hover:bg-green-200 text-center">Approve</button>
+                <button onClick={() => handleUpdate(post.id, 'rejected')} className="flex-1 sm:flex-none bg-red-100 text-red-700 px-3 py-2 rounded text-sm hover:bg-red-200 text-center">Reject</button>
               </div>
             </div>
           ))}

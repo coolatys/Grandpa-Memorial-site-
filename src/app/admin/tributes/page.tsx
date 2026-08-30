@@ -99,7 +99,7 @@ export default function AdminTributes() {
                 <div>
                   <h4 className="font-medium text-lg">{tribute.author_name}</h4>
                   <p className="text-sm text-stone-500">
-                    {tribute.author_relationship} {tribute.title ? `• ${tribute.title}` : ''}
+                    {tribute.author_relationship} {tribute.title ? `â€¢ ${tribute.title}` : ''}
                   </p>
                 </div>
                 <button 
