@@ -19,7 +19,7 @@ export default async function GallerySection() {
       <motion.h2 
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
+        viewport={{ once: false }}
         transition={{ duration: 0.6 }}
         className="text-4xl md:text-5xl font-serif text-center mb-12 text-primary"
       >

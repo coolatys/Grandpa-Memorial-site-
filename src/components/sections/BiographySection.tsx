@@ -17,7 +17,7 @@ export default async function BiographySection() {
       <motion.h2 
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
+        viewport={{ once: false }}
         transition={{ duration: 0.6 }}
         className="text-4xl md:text-5xl font-serif text-center mb-12 text-primary"
       >
@@ -28,7 +28,7 @@ export default async function BiographySection() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         whileInView={{ opacity: 1, scale: 1 }}
-        viewport={{ once: true }}
+        viewport={{ once: false }}
         transition={{ duration: 0.7 }}
         className="mb-16 max-w-lg mx-auto aspect-[4/5] md:aspect-square rounded-lg overflow-hidden relative shadow-sm border border-stone-100 flex items-center justify-center"
       >
@@ -49,7 +49,7 @@ export default async function BiographySection() {
               <motion.h3 
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: false }}
                 transition={{ duration: 0.6 }}
                 className="text-2xl font-serif text-accent mb-6"
               >
@@ -62,7 +62,7 @@ export default async function BiographySection() {
                     key={i}
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-50px" }}
+                    viewport={{ once: false, margin: "-50px" }}
                     transition={{ duration: 0.5, delay: Math.min(i * 0.1, 0.5) }}
                     className="text-stone-700 leading-relaxed text-justify m-0"
                     dangerouslySetInnerHTML={{ __html: para }}

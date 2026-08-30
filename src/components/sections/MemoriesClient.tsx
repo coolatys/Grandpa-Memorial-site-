@@ -51,7 +51,7 @@ export default function MemoriesClient({ posts }: { posts: Post[] }) {
       <motion.div 
         initial={{ opacity: 0, x: -20 }}
         whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true }}
+        viewport={{ once: false }}
         transition={{ duration: 0.6 }}
         className="lg:col-span-1"
       >
@@ -113,7 +113,7 @@ export default function MemoriesClient({ posts }: { posts: Post[] }) {
               key={post.id} 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-stone-100"
             >
@@ -137,7 +137,7 @@ export default function MemoriesClient({ posts }: { posts: Post[] }) {
                 <div>
                   <p className="font-medium text-stone-900">{post.author_name}</p>
                   <p className="text-stone-500 text-xs">
-                    {post.author_relationship ? `${post.author_relationship} • ` : ''}
+                    {post.author_relationship ? `${post.author_relationship} â€¢ ` : ''}
                     {new Date(post.created_at).toLocaleDateString()}
                   </p>
                 </div>

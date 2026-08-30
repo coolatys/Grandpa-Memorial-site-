@@ -33,7 +33,7 @@ export default async function ServiceSection() {
       <motion.h2 
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
+        viewport={{ once: false }}
         transition={{ duration: 0.6 }}
         className="text-4xl md:text-5xl font-serif text-center mb-8 text-primary"
       >
@@ -42,7 +42,7 @@ export default async function ServiceSection() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
+        viewport={{ once: false }}
         transition={{ duration: 0.6, delay: 0.2 }}
       >
         <ServiceClient settings={displaySettings as any} events={displayEvents as any[]} />

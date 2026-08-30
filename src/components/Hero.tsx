@@ -33,7 +33,7 @@ export default function Hero() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: false }}
           transition={{ duration: 1, delay: 0.2 }}
           className="text-stone-300 tracking-[0.2em] uppercase text-sm mb-6"
         >
@@ -43,7 +43,7 @@ export default function Hero() {
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: false }}
           transition={{ duration: 1, delay: 0.5 }}
           className="text-5xl md:text-7xl lg:text-8xl font-serif text-white mb-6 tracking-wide"
         >
@@ -53,7 +53,7 @@ export default function Hero() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: false }}
           transition={{ duration: 1, delay: 0.8 }}
           className="flex flex-col items-center space-y-4"
         >

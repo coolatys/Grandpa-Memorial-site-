@@ -15,7 +15,7 @@ export default async function TributesSection() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: false }}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
@@ -31,7 +31,7 @@ export default async function TributesSection() {
               key={post.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               transition={{ duration: 0.6, delay: 0.1 }}
               className="bg-white p-8 md:p-10 shadow-sm border border-stone-100 rounded-lg relative"
             >
