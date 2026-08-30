@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type Settings = {
   burial_datetime: string | null;
@@ -58,8 +58,19 @@ function Countdown({ targetDate }: { targetDate: string }) {
     <div className="flex justify-center gap-4 md:gap-8 my-12">
       {Object.entries(timeLeft).map(([unit, value]) => (
         <div key={unit} className="flex flex-col items-center">
-          <div className="w-16 h-16 md:w-24 md:h-24 bg-stone-200 rounded-lg flex items-center justify-center shadow-sm">
-            <span className="text-2xl md:text-4xl font-serif text-stone-800">{value}</span>
+          <div className="w-16 h-16 md:w-24 md:h-24 bg-stone-200 rounded-lg flex items-center justify-center shadow-sm overflow-hidden relative">
+            <AnimatePresence mode="popLayout">
+              <motion.span 
+                key={value}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
+                className="text-2xl md:text-4xl font-serif text-stone-800 absolute"
+              >
+                {value.toString().padStart(2, '0')}
+              </motion.span>
+            </AnimatePresence>
           </div>
           <span className="mt-2 text-xs md:text-sm uppercase tracking-widest text-stone-500">{unit}</span>
         </div>

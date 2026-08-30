@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -38,28 +40,81 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!session) return null;
 
+  const NavLinks = () => (
+    <>
+      <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 md:py-2 px-4 md:px-3 rounded-lg hover:bg-stone-100 text-stone-700 font-medium">Dashboard</Link>
+      <Link href="/admin/tributes" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 md:py-2 px-4 md:px-3 rounded-lg hover:bg-stone-100 text-stone-700 font-medium">Manage Tributes</Link>
+      <Link href="/admin/memories" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 md:py-2 px-4 md:px-3 rounded-lg hover:bg-stone-100 text-stone-700 font-medium">Moderate Memories</Link>
+      <Link href="/admin/family-tree" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 md:py-2 px-4 md:px-3 rounded-lg hover:bg-stone-100 text-stone-700 font-medium">Moderate Family</Link>
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-stone-100 flex flex-col md:flex-row pt-16">
-      {/* Sidebar / Topbar */}
-      <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-stone-200 p-4 md:p-6 flex md:flex-col md:h-[calc(100vh-64px)] sticky top-16 z-40 overflow-x-auto shadow-sm md:shadow-none">
-        <h2 className="hidden md:block text-xl font-serif text-primary mb-8">Admin Panel</h2>
-        <nav className="flex flex-row md:flex-col space-x-2 md:space-x-0 md:space-y-2 flex-1 min-w-max">
-          <Link href="/admin" className="block py-2 px-3 rounded hover:bg-stone-50 text-stone-700 whitespace-nowrap">Dashboard</Link>
-          <Link href="/admin/tributes" className="block py-2 px-3 rounded hover:bg-stone-50 text-stone-700 whitespace-nowrap">Tributes</Link>
-          <Link href="/admin/memories" className="block py-2 px-3 rounded hover:bg-stone-50 text-stone-700 whitespace-nowrap">Memories</Link>
-          <Link href="/admin/family-tree" className="block py-2 px-3 rounded hover:bg-stone-50 text-stone-700 whitespace-nowrap">Family</Link>
-          
-          <button 
-            onClick={() => supabase.auth.signOut()}
-            className="md:hidden py-2 px-3 rounded text-red-600 hover:bg-red-50 whitespace-nowrap ml-4 border border-red-100"
-          >
-            Sign Out
-          </button>
+    <div className="min-h-screen bg-stone-100 flex flex-col md:flex-row">
+      {/* Mobile Top Bar */}
+      <div className="md:hidden bg-white border-b border-stone-200 p-4 flex justify-between items-center sticky top-0 z-40">
+        <Link href="/" className="text-xl font-serif text-primary">GM Admin</Link>
+        <button 
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="p-2 text-stone-600 hover:text-stone-900 bg-stone-100 rounded-lg"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/50 z-50 md:hidden"
+            />
+            <motion.aside 
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'tween', duration: 0.3 }}
+              className="fixed inset-y-0 left-0 w-3/4 max-w-sm bg-white shadow-2xl z-50 flex flex-col p-6 md:hidden"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-serif text-primary">Admin Panel</h2>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-stone-500 hover:bg-stone-100 rounded-full">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <nav className="space-y-2 flex-1">
+                <NavLinks />
+              </nav>
+              <button 
+                onClick={() => supabase.auth.signOut()}
+                className="mt-auto w-full text-left py-3 px-4 rounded-lg text-red-600 font-medium hover:bg-red-50"
+              >
+                Sign Out
+              </button>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 bg-white border-r border-stone-200 p-6 flex-col min-h-screen sticky top-0">
+        <div className="mb-8">
+          <Link href="/" className="text-2xl font-serif text-primary hover:opacity-80 transition-opacity">GM Admin</Link>
+        </div>
+        <nav className="space-y-2 flex-1">
+          <NavLinks />
         </nav>
-        
         <button 
           onClick={() => supabase.auth.signOut()}
-          className="hidden md:block mt-auto text-left py-2 px-3 rounded text-red-600 hover:bg-red-50"
+          className="mt-auto text-left py-2 px-3 rounded-lg text-red-600 font-medium hover:bg-red-50 transition-colors"
         >
           Sign Out
         </button>

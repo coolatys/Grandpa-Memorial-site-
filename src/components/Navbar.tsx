@@ -20,6 +20,10 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <nav className="fixed top-0 w-full z-50 bg-stone-900/95 md:bg-stone-900/80 backdrop-blur-md border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
