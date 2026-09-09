@@ -13,12 +13,13 @@ export default async function ServiceSection() {
     .select('*')
     .order('sort_order', { ascending: true });
 
+  const s = settings as any;
   const displaySettings = {
-    burial_datetime: settings?.burial_datetime || new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(), // 7 days from now
-    wake_keep_datetime: settings?.wake_keep_datetime || new Date(Date.now() + 1000 * 60 * 60 * 24 * 6).toISOString(),
-    venue_name: settings?.venue_name || 'St. Mary\'s Church',
-    venue_address: settings?.venue_address || '123 Memorial Lane, Peaceful City',
-    livestream_url: settings?.livestream_url || null,
+    burial_datetime: s?.burial_datetime || new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(), // 7 days from now
+    wake_keep_datetime: s?.wake_keep_datetime || new Date(Date.now() + 1000 * 60 * 60 * 24 * 6).toISOString(),
+    venue_name: s?.venue_name || 'St. Mary\'s Church',
+    venue_address: s?.venue_address || '123 Memorial Lane, Peaceful City',
+    livestream_url: s?.livestream_url || null,
   };
 
   const displayEvents = events && events.length > 0 ? events : [

@@ -17,15 +17,17 @@ export default async function FamilyTreePage() {
   ];
 
   return (
-    <div className="pt-24 pb-16 px-4 max-w-7xl mx-auto min-h-screen">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-serif mb-4 text-primary">Family Tree</h1>
-        <p className="text-stone-600 max-w-2xl mx-auto text-lg">
-          Explore our family roots and add yourself to the tree.
-        </p>
-      </div>
+    <div className="min-h-screen bg-[#FDFBF7] pt-24 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <h1 className="text-4xl md:text-5xl font-serif text-stone-800 mb-4">Family Tree</h1>
+          <p className="text-lg text-stone-600 max-w-2xl">
+            Explore our roots and connections. Click on any family member to view details or add your own connection to the tree.
+          </p>
+        </div>
 
-      <FamilyTreeClient members={displayMembers as any[]} />
+        <FamilyTreeClient />
+      </div>
     </div>
   );
 }
