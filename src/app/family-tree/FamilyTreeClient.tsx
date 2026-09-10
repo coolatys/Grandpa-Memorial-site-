@@ -79,9 +79,13 @@ export default function FamilyTreeClient() {
 
   const treeData = useMemo(() => {
     if (!members.length) {
+      // Visible empty state
       return {
-        name: 'Empty',
-        attributes: { isSuperRoot: true },
+        name: 'EmptyTree',
+        attributes: { 
+          primary: { id: 'empty', full_name: 'Start the Family Tree', birth_year: null, death_year: null, photo_url: null, parent_id: null, spouse_id: null, gender: null },
+          isEmptyState: true
+        },
         children: []
       };
     }
@@ -219,6 +223,17 @@ export default function FamilyTreeClient() {
   const renderCustomNodeElement = useCallback(({ nodeDatum, toggleNode }: any) => {
     if (nodeDatum.attributes?.isSuperRoot) {
       return <g></g>; // Invisible
+    }
+
+    if (nodeDatum.attributes?.isEmptyState) {
+      return (
+        <g className="cursor-pointer" transform="translate(-60, -80)" onClick={(e) => handleNodeClick(nodeDatum, {target: {getAttribute: () => 'click-primary'}})}>
+          <rect width="120" height="160" fill="#f8fafc" rx="12" stroke="#2F4538" strokeWidth="2" strokeDasharray="6,6" data-action="click-primary" />
+          <circle cx="60" cy="50" r="24" fill="#e2e8f0" data-action="click-primary" />
+          <path d="M60 40v20M50 50h20" stroke="#64748b" strokeWidth="2" strokeLinecap="round" data-action="click-primary" />
+          <text x="60" y="100" textAnchor="middle" fill="#475569" className="text-sm font-bold font-sans" data-action="click-primary">Start Tree</text>
+        </g>
+      );
     }
 
     if (nodeDatum.attributes?.isPlaceholderCouple) {
