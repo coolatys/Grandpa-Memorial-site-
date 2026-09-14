@@ -144,10 +144,32 @@ export default function FamilyTreeClient() {
     const getChildrenEdges = (parentId: string) => edges.filter(e => e.relationship_type === 'parent_child' && e.from_node_id === parentId);
     const getParentEdges = (childId: string) => edges.filter(e => e.relationship_type === 'parent_child' && e.to_node_id === childId);
     
-    // Identify roots (nodes that are not children of anyone)
-    const rootNodes = members.filter(m => getParentEdges(m.id).length === 0);
-    // If no roots (circular dependency or empty), just pick the first person as root
-    const startingNodes = rootNodes.length > 0 ? rootNodes : [members[0]];
+    // Identify true roots (nodes that have no parents AND are not just in-laws to someone who does)
+    const zeroParentNodes = members.filter(m => getParentEdges(m.id).length === 0);
+    const rootNodes: Person[] = [];
+    const seenRoots = new Set<string>();
+
+    for (const node of zeroParentNodes) {
+      if (seenRoots.has(node.id)) continue;
+      
+      const spouseEdge = edges.find(e => e.relationship_type === 'spouse' && (e.from_node_id === node.id || e.to_node_id === node.id));
+      if (spouseEdge) {
+        const spouseId = spouseEdge.from_node_id === node.id ? spouseEdge.to_node_id : spouseEdge.from_node_id;
+        const spouseHasParents = getParentEdges(spouseId).length > 0;
+        
+        if (spouseHasParents) {
+          // This node is an in-law connecting to a branch that has parents. Not a true root.
+          continue;
+        }
+        // Both spouses have no parents. Mark the other so we don't duplicate them as roots.
+        seenRoots.add(spouseId);
+      }
+      rootNodes.push(node);
+      seenRoots.add(node.id);
+    }
+
+    // If circular dependency or completely empty, fallback safely
+    const startingNodes = rootNodes.length > 0 ? rootNodes : (members.length > 0 ? [members[0]] : []);
 
     const buildNode = (person: Person): TreeNode => {
       processedIds.add(person.id);

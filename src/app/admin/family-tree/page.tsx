@@ -73,22 +73,34 @@ export default function AdminFamilyTreePage() {
 
         // 2. Insert Edges intelligently
         if (edges && edges.length > 0) {
+          // CONTRADICTION GUARD: Fetch all current edges to validate graph integrity
+          const { data: currentEdges } = await supabase.from('family_tree_edges').select('*');
+          
+          // Cycle detector
+          const isAncestor = (ancestorId: string, descendantId: string, allEdges: any[]): boolean => {
+            if (ancestorId === descendantId) return true;
+            const parents = allEdges.filter(e => e.relationship_type === 'parent_child' && e.to_node_id === descendantId);
+            for (const p of parents) {
+              if (isAncestor(ancestorId, p.from_node_id, allEdges)) return true;
+            }
+            return false;
+          };
+
+          const edgesToCommit = [];
           for (const e of edges) {
             const targetId = e.target_node_id;
             const newId = insertedNode.id;
             const type = e.relationship_type.toLowerCase();
             
             if (type === 'child') {
-              // new node is child of target node
-              await supabase.from('family_tree_edges').insert({ from_node_id: targetId, to_node_id: newId, relationship_type: 'parent_child' });
+              edgesToCommit.push({ from_node_id: targetId, to_node_id: newId, relationship_type: 'parent_child' });
             } else if (type === 'parent' || type === 'father' || type === 'mother') {
-              // new node is parent of target node
-              await supabase.from('family_tree_edges').insert({ from_node_id: newId, to_node_id: targetId, relationship_type: 'parent_child' });
+              // Ensure we don't create a cycle where target is an ancestor of newId
+              // (Since newId was just created, it has no descendants, so a cycle is impossible here, but good practice)
+              edgesToCommit.push({ from_node_id: newId, to_node_id: targetId, relationship_type: 'parent_child' });
             } else if (type === 'spouse') {
-              // spouse is bidirectional, just store one consistent direction
-              await supabase.from('family_tree_edges').insert({ from_node_id: targetId, to_node_id: newId, relationship_type: 'spouse' });
+              edgesToCommit.push({ from_node_id: targetId, to_node_id: newId, relationship_type: 'spouse' });
             } else if (type === 'sibling') {
-              // sibling: find parents of target node and link them to new node
               const { data: parents } = await supabase
                 .from('family_tree_edges')
                 .select('from_node_id')
@@ -97,16 +109,30 @@ export default function AdminFamilyTreePage() {
               
               if (parents && parents.length > 0) {
                 for (const p of parents) {
-                  await supabase.from('family_tree_edges').insert({ from_node_id: p.from_node_id, to_node_id: newId, relationship_type: 'parent_child' });
+                  edgesToCommit.push({ from_node_id: p.from_node_id, to_node_id: newId, relationship_type: 'parent_child' });
                 }
               } else {
-                // If no parents exist, create a direct sibling edge
-                await supabase.from('family_tree_edges').insert({ from_node_id: targetId, to_node_id: newId, relationship_type: 'sibling' });
+                edgesToCommit.push({ from_node_id: targetId, to_node_id: newId, relationship_type: 'sibling' });
               }
             } else {
-              // cousin, godparent, etc.
-              await supabase.from('family_tree_edges').insert({ from_node_id: targetId, to_node_id: newId, relationship_type: type });
+              edgesToCommit.push({ from_node_id: targetId, to_node_id: newId, relationship_type: type });
             }
+          }
+
+          // Validate constraints before commit
+          for (const edge of edgesToCommit) {
+             if (edge.relationship_type === 'parent_child') {
+                if (isAncestor(edge.to_node_id, edge.from_node_id, currentEdges || [])) {
+                   alert('Integrity Error: This request creates a logical contradiction (cycle) in the tree.');
+                   return; // Abort approval
+                }
+             }
+          }
+
+          // Commit edges
+          if (edgesToCommit.length > 0) {
+             const { error: edgeErr } = await supabase.from('family_tree_edges').insert(edgesToCommit);
+             if (edgeErr) throw edgeErr;
           }
         }
       } else if (req.request_type === 'edit_node') {
