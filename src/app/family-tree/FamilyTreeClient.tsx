@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -14,10 +14,19 @@ type Person = {
   full_name: string;
   birth_year: string | null;
   death_year: string | null;
+  is_deceased: boolean;
   photo_url: string | null;
-  parent_id: string | null;
-  spouse_id: string | null;
-  gender: string | null;
+  bio: string | null;
+  contact_info: string | null;
+  gender: string | null; // Keep for silhouette rendering fallback
+};
+
+type Edge = {
+  id: string;
+  from_node_id: string;
+  to_node_id: string;
+  relationship_type: string;
+  relationship_desc: string | null;
 };
 
 type TreeNode = {
@@ -25,51 +34,91 @@ type TreeNode = {
   attributes: {
     primary?: Person | any;
     spouse?: Person | any;
-    isPlaceholderCouple?: boolean;
-    childIdForPlaceholder?: string;
     isSuperRoot?: boolean;
+    isEmptyState?: boolean;
     expanded?: boolean;
+    otherEdges?: Edge[];
   } | Record<string, any>;
   children: TreeNode[];
 };
 
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 200;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.6)); 
+      };
+      img.onerror = reject;
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function FamilyTreeClient() {
   const [members, setMembers] = useState<Person[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'add_relative' | 'claim_relationship'>('claim_relationship');
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
-  const [selectedPlaceholderType, setSelectedPlaceholderType] = useState<string | null>(null); // 'Father', 'Mother', 'Spouse', 'Child'
-  const [targetNodeId, setTargetNodeId] = useState<string | null>(null);
+  const [requestType, setRequestType] = useState<'new_node' | 'edit_node'>('new_node');
+  
+  // Connection type for new_node relative to target
+  const [connectionType, setConnectionType] = useState<string>('child'); 
+  const [customConnection, setCustomConnection] = useState('');
 
   // Form State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [uploadDataUrl, setUploadDataUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [isDeceasedForm, setIsDeceasedForm] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Tree View State
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [translate, setTranslate] = useState({ x: 0, y: 150 });
-  const [treeContainer, setTreeContainer] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    fetchMembers();
-    
-    // Set initial translation based on screen size
+    fetchTreeData();
     if (typeof window !== 'undefined') {
       setTranslate({ x: window.innerWidth / 2, y: 150 });
     }
   }, []);
 
-  const fetchMembers = async () => {
+  const fetchTreeData = async () => {
     try {
-      const { data, error } = await supabase
-        .from('family_tree_nodes')
-        .select('*');
-      if (!error && data) {
-        setMembers(data);
-      }
+      const [nodesRes, edgesRes] = await Promise.all([
+        supabase.from('family_tree_nodes').select('*').eq('status', 'approved'),
+        supabase.from('family_tree_edges').select('*')
+      ]);
+      
+      if (!nodesRes.error && nodesRes.data) setMembers(nodesRes.data);
+      if (!edgesRes.error && edgesRes.data) setEdges(edgesRes.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -79,76 +128,96 @@ export default function FamilyTreeClient() {
 
   const treeData = useMemo(() => {
     if (!members.length) {
-      // Visible empty state
       return {
         name: 'EmptyTree',
         attributes: { 
-          primary: { id: 'empty', full_name: 'Start the Family Tree', birth_year: null, death_year: null, photo_url: null, parent_id: null, spouse_id: null, gender: null },
+          primary: { id: 'empty', full_name: 'Start the Family Tree', birth_year: null, death_year: null, photo_url: null },
           isEmptyState: true
         },
         children: []
       };
     }
 
-    // Basic hierarchy building (for demonstration)
-    // 1. Group couples
     const processedIds = new Set<string>();
-    const couples: { primary: Person; spouse?: Person; children: Person[] }[] = [];
     
-    // Helper to find descendants
-    const getChildren = (parentId: string) => members.filter(m => m.parent_id === parentId);
+    // Helpers to find relationships
+    const getChildrenEdges = (parentId: string) => edges.filter(e => e.relationship_type === 'child' && e.from_node_id === parentId);
+    const getParentEdges = (childId: string) => edges.filter(e => e.relationship_type === 'child' && e.to_node_id === childId);
+    
+    // Identify roots (nodes that are not children of anyone)
+    const rootNodes = members.filter(m => getParentEdges(m.id).length === 0);
+    // If no roots (circular dependency or empty), just pick the first person as root
+    const startingNodes = rootNodes.length > 0 ? rootNodes : [members[0]];
 
-    // Find root nodes (no parent in the DB)
-    const roots = members.filter(m => !m.parent_id && !processedIds.has(m.id));
-
-    // A recursive function to build the tree node
     const buildNode = (person: Person): TreeNode => {
       processedIds.add(person.id);
-      let spouse: Person | undefined = undefined;
       
-      if (person.spouse_id) {
-        spouse = members.find(m => m.id === person.spouse_id);
+      // Find spouse
+      const spouseEdge = edges.find(e => e.relationship_type === 'spouse' && (e.from_node_id === person.id || e.to_node_id === person.id));
+      let spouse: Person | undefined = undefined;
+      if (spouseEdge) {
+        const spouseId = spouseEdge.from_node_id === person.id ? spouseEdge.to_node_id : spouseEdge.from_node_id;
+        spouse = members.find(m => m.id === spouseId);
         if (spouse) processedIds.add(spouse.id);
-      } else {
-        // Also check if anyone claims this person as a spouse
-        const reverseSpouse = members.find(m => m.spouse_id === person.id);
-        if (reverseSpouse) {
-          spouse = reverseSpouse;
-          processedIds.add(spouse.id);
-        }
       }
 
-      const children = getChildren(person.id);
-      if (spouse) {
-        const spouseChildren = getChildren(spouse.id);
-        for (const sc of spouseChildren) {
-          if (!children.find(c => c.id === sc.id)) children.push(sc);
+      // Find children
+      const childEdges = getChildrenEdges(person.id);
+      const spouseChildEdges = spouse ? getChildrenEdges(spouse.id) : [];
+      
+      // Merge unique children
+      const uniqueChildIds = new Set([...childEdges.map(e => e.to_node_id), ...spouseChildEdges.map(e => e.to_node_id)]);
+      const children: TreeNode[] = [];
+      
+      uniqueChildIds.forEach(childId => {
+        if (!processedIds.has(childId)) {
+          const childPerson = members.find(m => m.id === childId);
+          if (childPerson) {
+            children.push(buildNode(childPerson));
+          }
         }
-      }
+      });
+
+      // Find other edges (cousin, godparent, etc) for this node to display in UI if needed
+      const otherEdges = edges.filter(e => 
+        (e.from_node_id === person.id || e.to_node_id === person.id) && 
+        !['child', 'spouse', 'parent'].includes(e.relationship_type)
+      );
 
       return {
         name: person.id,
         attributes: {
           primary: person,
           spouse: spouse,
+          otherEdges
         },
-        children: children.map(c => buildNode(c))
+        children
       };
     };
 
-    const rootNodes = roots.map(r => buildNode(r));
+    const forest = startingNodes.filter(n => !processedIds.has(n.id)).map(r => buildNode(r));
 
-    // Wrap in a super root so multiple separate families can render
     return {
       name: 'SuperRoot',
       attributes: { isSuperRoot: true },
-      children: rootNodes.map(rn => ({
-        name: 'Placeholder_' + rn.name,
-        attributes: { isPlaceholderCouple: true, childIdForPlaceholder: rn.attributes.primary?.id },
-        children: [rn]
-      }))
+      children: forest
     };
-  }, [members]);
+  }, [members, edges]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const dataUrl = await compressImage(file);
+      setUploadDataUrl(dataUrl);
+    } catch(err) {
+      console.error(err);
+      alert('Failed to process image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -156,328 +225,405 @@ export default function FamilyTreeClient() {
     setSuccess(false);
 
     const formData = new FormData(e.currentTarget);
+    
+    // Construct the payload based on Request Type
+    let proposedData: any = {};
+    
+    if (requestType === 'new_node') {
+      proposedData = {
+        node: {
+          full_name: formData.get('new_relative_name'),
+          birth_year: formData.get('new_relative_birth'),
+          death_year: isDeceasedForm ? formData.get('new_relative_death') : null,
+          is_deceased: isDeceasedForm,
+          photo_url: uploadDataUrl || null,
+          bio: formData.get('bio'),
+          contact_info: formData.get('contact_info')
+        },
+        edges: []
+      };
+
+      // Connect it to the target node
+      if (selectedPerson) {
+        const type = connectionType === 'other' ? customConnection : connectionType;
+        proposedData.edges.push({
+          target_node_id: selectedPerson.id,
+          relationship_type: type
+        });
+      }
+    } else {
+      // Edit mode: proposing changes to the selected node
+      proposedData = {
+        edit_target_id: selectedPerson?.id,
+        changes: {}
+      };
+      const name = formData.get('edit_name');
+      const birth = formData.get('edit_birth');
+      const death = isDeceasedForm ? formData.get('edit_death') : null;
+      const bio = formData.get('bio');
+      const contact = formData.get('contact_info');
+
+      if (name) proposedData.changes.full_name = name;
+      if (birth) proposedData.changes.birth_year = birth;
+      if (isDeceasedForm !== undefined) proposedData.changes.is_deceased = isDeceasedForm;
+      if (death) proposedData.changes.death_year = death;
+      if (bio) proposedData.changes.bio = bio;
+      if (contact) proposedData.changes.contact_info = contact;
+      if (uploadDataUrl) proposedData.changes.photo_url = uploadDataUrl;
+    }
+
     const data = {
-      target_node_id: targetNodeId,
-      submitter_name: formData.get('submitter_name') as string,
-      submitter_email: formData.get('submitter_email') as string,
-      submitter_phone: formData.get('submitter_phone') as string,
-      submitter_relationship: formData.get('submitter_relationship') as string,
-      action_type: modalMode,
-      new_relative_name: formData.get('new_relative_name') as string || null,
-      new_relative_birth: formData.get('new_relative_birth') as string || null,
-      new_relative_death: formData.get('new_relative_death') as string || null,
-      new_relative_type: selectedPlaceholderType,
-      photo_url: formData.get('photo_url') as string || null,
-      status: 'pending' as const,
+      request_type: requestType,
+      target_node_id: selectedPerson?.id || null,
+      submitter_info: {
+        name: formData.get('submitter_name'),
+        email: formData.get('submitter_email'),
+        phone: formData.get('submitter_phone'),
+        relationship: formData.get('submitter_relationship')
+      },
+      proposed_data: proposedData,
+      status: 'pending'
     };
 
-    // @ts-ignore
-    const { error } = await supabase.from('family_tree_submissions').insert(data);
-
-    setIsSubmitting(false);
-    if (!error) {
+    try {
+      const { error } = await supabase.from('family_tree_requests').insert([data]);
+      if (error) throw error;
       setSuccess(true);
-      (e.target as HTMLFormElement).reset();
-      setTimeout(() => {
-        setShowModal(false);
-        setSuccess(false);
-      }, 3000);
-    } else {
+    } catch (err) {
+      console.error(err);
       alert('Failed to submit. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleNodeClick = (nodeDatum: any, e: any) => {
-    // If it's the super root, do nothing
-    if (nodeDatum.attributes?.isSuperRoot) return;
-
-    // Check if clicked on add mother/father
-    const targetEl = e.target as SVGElement;
-    const action = targetEl.getAttribute('data-action');
-    
-    if (nodeDatum.attributes?.isPlaceholderCouple) {
-      if (action === 'add-father' || action === 'add-mother') {
-        setModalMode('add_relative');
-        setTargetNodeId(nodeDatum.attributes.childIdForPlaceholder || null);
-        setSelectedPlaceholderType(action === 'add-father' ? 'father' : 'mother');
-        setSelectedPerson(null);
-        setShowModal(true);
-      }
-      return;
-    }
-
-    if (action === 'click-primary' && nodeDatum.attributes?.primary) {
-      setModalMode('claim_relationship');
-      setTargetNodeId(nodeDatum.attributes.primary.id);
-      setSelectedPerson(nodeDatum.attributes.primary);
-      setShowModal(true);
-    } else if (action === 'click-spouse' && nodeDatum.attributes?.spouse) {
-      setModalMode('claim_relationship');
-      setTargetNodeId(nodeDatum.attributes.spouse.id);
-      setSelectedPerson(nodeDatum.attributes.spouse);
-      setShowModal(true);
-    }
+  const formatName = (fullName: string) => {
+    if (!fullName) return { first: '', last: '' };
+    const parts = fullName.trim().split(' ');
+    if (parts.length === 1) return { first: parts[0], last: '' };
+    const last = parts.pop();
+    const first = parts.join(' ');
+    return { first, last };
   };
 
-  // Custom rendering for the nodes
-  const renderCustomNodeElement = useCallback(({ nodeDatum, toggleNode }: any) => {
-    if (nodeDatum.attributes?.isSuperRoot) {
-      return <g></g>; // Invisible
-    }
+  const renderCustomNodeElement = ({ nodeDatum }: any) => {
+    if (nodeDatum.attributes?.isSuperRoot) return <g></g>; 
 
     if (nodeDatum.attributes?.isEmptyState) {
       return (
-        <g className="cursor-pointer" transform="translate(-60, -80)" onClick={(e) => handleNodeClick(nodeDatum, {target: {getAttribute: () => 'click-primary'}})}>
-          <rect width="120" height="160" fill="#f8fafc" rx="12" stroke="#2F4538" strokeWidth="2" strokeDasharray="6,6" data-action="click-primary" />
-          <circle cx="60" cy="50" r="24" fill="#e2e8f0" data-action="click-primary" />
-          <path d="M60 40v20M50 50h20" stroke="#64748b" strokeWidth="2" strokeLinecap="round" data-action="click-primary" />
-          <text x="60" y="100" textAnchor="middle" fill="#475569" className="text-sm font-bold font-sans" data-action="click-primary">Start Tree</text>
-        </g>
-      );
-    }
-
-    if (nodeDatum.attributes?.isPlaceholderCouple) {
-      // Render Dashed "Add Father" and "Add Mother"
-      return (
-        <g>
-          {/* Add Father */}
-          <g className="cursor-pointer" transform="translate(-140, -80)" onClick={(e) => handleNodeClick(nodeDatum, {target: {getAttribute: () => 'add-father'}})}>
-            <rect width="120" height="160" fill="#f8fafc" rx="12" stroke="#cbd5e1" strokeWidth="2" strokeDasharray="6,6" data-action="add-father" />
-            <circle cx="60" cy="50" r="24" fill="#e2e8f0" data-action="add-father" />
-            <path d="M60 40v20M50 50h20" stroke="#64748b" strokeWidth="2" strokeLinecap="round" data-action="add-father" />
-            <text x="60" y="100" textAnchor="middle" fill="#475569" className="text-sm font-medium font-sans" data-action="add-father">Add Father</text>
-          </g>
-
-          {/* Connection line between them */}
-          <line x1="-20" y1="0" x2="20" y2="0" stroke="#cbd5e1" strokeWidth="2" />
-
-          {/* Add Mother */}
-          <g className="cursor-pointer" transform="translate(20, -80)" onClick={(e) => handleNodeClick(nodeDatum, {target: {getAttribute: () => 'add-mother'}})}>
-            <rect width="120" height="160" fill="#f8fafc" rx="12" stroke="#cbd5e1" strokeWidth="2" strokeDasharray="6,6" data-action="add-mother" />
-            <circle cx="60" cy="50" r="24" fill="#e2e8f0" data-action="add-mother" />
-            <path d="M60 40v20M50 50h20" stroke="#64748b" strokeWidth="2" strokeLinecap="round" data-action="add-mother" />
-            <text x="60" y="100" textAnchor="middle" fill="#475569" className="text-sm font-medium font-sans" data-action="add-mother">Add Mother</text>
-          </g>
+        <g className="cursor-pointer" transform="translate(-50, -70)" onClick={() => {
+          setSelectedPerson(null);
+          setRequestType('new_node');
+          setUploadDataUrl(null);
+          setShowModal(true);
+        }}>
+          <foreignObject width="100" height="140" x="0" y="0">
+             <div className="w-[100px] h-[140px] bg-white rounded-[16px] shadow-md border border-stone-100 flex flex-col items-center justify-center text-center p-2 hover:shadow-lg transition">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                  <span className="text-primary text-xl font-bold">+</span>
+                </div>
+                <p className="text-[11px] font-bold text-stone-700 leading-tight">Start Tree</p>
+             </div>
+          </foreignObject>
         </g>
       );
     }
 
     const { primary, spouse } = nodeDatum.attributes;
-    const defaultAvatar = "https://images.unsplash.com/photo-1544502062-f82887f03d1c?q=80&w=200&auto=format&fit=crop";
+    const hasSpouse = !!spouse;
+    const primaryX = hasSpouse ? -110 : -50;
+    const spouseX = 10;
+    
+    const maleSilhouette = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23B2CBBF'/%3E%3Ccircle cx='50' cy='40' r='20' fill='%23486358'/%3E%3Cpath d='M20 100 Q 50 60 80 100' fill='%23486358'/%3E%3C/svg%3E";
+    const femaleSilhouette = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23E8B6A5'/%3E%3Ccircle cx='50' cy='40' r='20' fill='%23A15444'/%3E%3Cpath d='M20 100 Q 50 60 80 100' fill='%23A15444'/%3E%3C/svg%3E";
 
-    // Split names to make surname bold
-    const formatName = (fullName: string) => {
-      const parts = fullName.split(' ');
-      const last = parts.pop();
-      const first = parts.join(' ');
-      return { first, last };
+    const getSilhouette = (gender?: string) => {
+      if (gender?.toLowerCase() === 'female') return femaleSilhouette;
+      return maleSilhouette; // fallback
     };
 
-    const hasSpouse = !!spouse;
-    const primaryOffset = hasSpouse ? -140 : -60;
-    const spouseOffset = 20;
+    const renderCard = (person: any, x: number) => {
+      const { first, last } = formatName(person.full_name);
+      const isDeceasedDB = person.is_deceased !== false; 
+      
+      return (
+        <foreignObject width="100" height="150" x={x} y="-75" onClick={() => {
+            setSelectedPerson(person);
+            setRequestType('new_node');
+            setConnectionType('child');
+            setUploadDataUrl(null);
+            setShowModal(true);
+        }}>
+          <div className="w-[100px] h-[140px] bg-white rounded-[12px] shadow-[0_2px_10px_rgba(0,0,0,0.06)] border border-[#ecece9] flex flex-col items-center justify-start overflow-visible cursor-pointer hover:shadow-[0_4px_15px_rgba(0,0,0,0.1)] transition-shadow relative">
+            <div className="absolute -top-1 -right-1 w-6 h-6 bg-[#4c9d4b] rounded-full border-[2.5px] border-white flex items-center justify-center z-10 shadow-sm">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 5.58 2 10c0 2.5 1.45 4.73 3.73 6.13L5 20l3.43-1.42C9.57 18.85 10.76 19 12 19c5.52 19 10-15.42 10-11S17.52 2 12 2z"/></svg>
+            </div>
+            
+            <div className="w-full h-[65px] bg-gradient-to-b from-[#f4f4f4] to-white rounded-t-[12px] flex items-center justify-center relative border-b border-transparent">
+              <img src={person.photo_url || getSilhouette(person.gender)} className="w-[56px] h-[56px] rounded-full object-cover shadow-sm mt-3 bg-[#e2e8f0]" alt={person.full_name} />
+            </div>
+            
+            <div className="w-full mt-4 px-1 text-center flex flex-col items-center flex-1">
+              <p className="text-[11px] leading-[1.2] text-[#2c2c2c] w-full px-1 break-words line-clamp-2">
+                {first} <br/><span className="font-bold">{last}</span>
+              </p>
+              <p className="text-[9px] text-[#717171] mt-[2px] whitespace-nowrap">
+                {person.birth_year || '?'}–{!isDeceasedDB ? 'Present' : (person.death_year || '')}
+              </p>
+            </div>
+          </div>
+        </foreignObject>
+      );
+    };
 
     return (
       <g>
-        {/* Primary Person */}
-        <g className="cursor-pointer transition-transform hover:scale-105" transform={`translate(${primaryOffset}, -80)`} onClick={(e) => handleNodeClick(nodeDatum, {target: {getAttribute: () => 'click-primary'}})}>
-          <rect width="120" height="160" fill="#ffffff" rx="12" stroke="#2F4538" strokeWidth="1" className="shadow-lg" data-action="click-primary" />
-          
-          <clipPath id={`clip-${primary.id}`}>
-            <circle cx="60" cy="50" r="32" />
-          </clipPath>
-          <circle cx="60" cy="50" r="34" fill="#f5f5f4" stroke="#2F4538" strokeWidth="2" data-action="click-primary" />
-          <image 
-            href={primary.photo_url || defaultAvatar}
-            x="20" y="10" 
-            height="80" width="80" 
-            clipPath={`url(#clip-${primary.id})`} 
-            preserveAspectRatio="xMidYMid slice"
-            data-action="click-primary"
-          />
-
-          <text x="60" y="110" textAnchor="middle" fill="#1c1917" className="text-sm font-sans" data-action="click-primary">
-            {formatName(primary.full_name).first}
-          </text>
-          <text x="60" y="125" textAnchor="middle" fill="#1c1917" className="text-sm font-bold font-sans" data-action="click-primary">
-            {formatName(primary.full_name).last}
-          </text>
-          <text x="60" y="145" textAnchor="middle" fill="#78716c" className="text-xs font-sans" data-action="click-primary">
-            {primary.birth_year || '?'}{' - '}{primary.death_year || '?'}
-          </text>
-        </g>
-
-        {/* Spouse Connector & Spouse Card */}
+        {renderCard(primary, primaryX)}
+        {hasSpouse && renderCard(spouse, spouseX)}
         {hasSpouse && (
-          <g>
-            <line x1="-20" y1="0" x2="20" y2="0" stroke="#94a3b8" strokeWidth="2" />
-            
-            <g className="cursor-pointer transition-transform hover:scale-105" transform={`translate(${spouseOffset}, -80)`} onClick={(e) => handleNodeClick(nodeDatum, {target: {getAttribute: () => 'click-spouse'}})}>
-              <rect width="120" height="160" fill="#ffffff" rx="12" stroke="#C39958" strokeWidth="1" className="shadow-lg" data-action="click-spouse" />
-              
-              <clipPath id={`clip-${spouse.id}`}>
-                <circle cx="60" cy="50" r="32" />
-              </clipPath>
-              <circle cx="60" cy="50" r="34" fill="#f5f5f4" stroke="#C39958" strokeWidth="2" data-action="click-spouse" />
-              <image 
-                href={spouse.photo_url || defaultAvatar}
-                x="20" y="10" 
-                height="80" width="80" 
-                clipPath={`url(#clip-${spouse.id})`} 
-                preserveAspectRatio="xMidYMid slice"
-                data-action="click-spouse"
-              />
-
-              <text x="60" y="110" textAnchor="middle" fill="#1c1917" className="text-sm font-sans" data-action="click-spouse">
-                {formatName(spouse.full_name).first}
-              </text>
-              <text x="60" y="125" textAnchor="middle" fill="#1c1917" className="text-sm font-bold font-sans" data-action="click-spouse">
-                {formatName(spouse.full_name).last}
-              </text>
-              <text x="60" y="145" textAnchor="middle" fill="#78716c" className="text-xs font-sans" data-action="click-spouse">
-                {spouse.birth_year || '?'}{' - '}{spouse.death_year || '?'}
-              </text>
-            </g>
-          </g>
-        )}
-
-        {/* Expand/Collapse chevron if node has children */}
-        {nodeDatum.children && nodeDatum.children.length > 0 && (
-          <g onClick={toggleNode} className="cursor-pointer" transform="translate(0, 95)">
-            <circle cx="0" cy="0" r="12" fill="#EAE6DF" stroke="#2F4538" strokeWidth="1" />
-            <path d={nodeDatum.__expanded ? "M-4 2l4-4 4 4" : "M-4 -2l4 4 4-4"} stroke="#2F4538" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </g>
+          <line x1="-10" y1="0" x2="10" y2="0" stroke="#cbd5e1" strokeWidth="1.5" />
         )}
       </g>
     );
-  }, []);
-
-  if (loading) return <div className="text-center py-24 text-stone-500">Loading Family Tree...</div>;
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Tree Visualization */}
-      <div 
-        className="w-full bg-[#f8faf9] rounded-xl shadow-inner border border-stone-200 overflow-hidden relative group flex flex-col"
-        ref={setTreeContainer}
-      >
-        {/* Controls Bar */}
-        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-          <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.2, 3))} className="w-10 h-10 flex items-center justify-center bg-white border border-stone-200 rounded-full shadow-md text-stone-700 hover:bg-stone-50 font-bold text-xl active:bg-stone-100" aria-label="Zoom In">+</button>
-          <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.2, 0.2))} className="w-10 h-10 flex items-center justify-center bg-white border border-stone-200 rounded-full shadow-md text-stone-700 hover:bg-stone-50 font-bold text-xl active:bg-stone-100" aria-label="Zoom Out">-</button>
-          <button onClick={() => { setZoomLevel(0.8); if(treeContainer) setTranslate({x: treeContainer.clientWidth / 2, y: 150}); }} className="w-10 h-10 flex items-center justify-center bg-white border border-stone-200 rounded-full shadow-md text-stone-700 hover:bg-stone-50 text-xs font-medium active:bg-stone-100">Reset</button>
+    <div className="relative w-full h-full min-h-[75vh]">
+      {loading ? (
+        <div className="w-full h-[500px] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
-
-        {/* CSS to hide the root node links to its children (the super root is invisible, we don't want lines drawn to the first generation placeholders) */}
-        <style dangerouslySetInnerHTML={{__html: `
-          .rd3t-link { stroke: #cbd5e1; stroke-width: 2px; }
-          .rd3t-g:first-child > path.rd3t-link { display: none; }
-        `}} />
-
-        <div className="w-full h-[75vh] md:h-[800px] cursor-grab active:cursor-grabbing touch-none">
+      ) : (
+        <div className="w-full h-[75vh] md:h-[800px] cursor-grab active:cursor-grabbing touch-none bg-[#FDFBF7]">
           <Tree
             data={treeData as any}
             orientation="vertical"
             pathFunc="step"
             zoom={zoomLevel}
             translate={translate}
-            nodeSize={{ x: 300, y: 250 }}
+            nodeSize={{ x: 180, y: 200 }}
             enableLegacyTransitions={true}
             transitionDuration={400}
             renderCustomNodeElement={renderCustomNodeElement}
           />
+          
+          <div className="absolute bottom-6 right-6 flex flex-col gap-2">
+            <button onClick={() => setZoomLevel(z => Math.min(z + 0.2, 2))} className="w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center font-bold text-stone-600 hover:text-primary transition-colors">+</button>
+            <button onClick={() => setZoomLevel(z => Math.max(z - 0.2, 0.2))} className="w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center font-bold text-stone-600 hover:text-primary transition-colors">-</button>
+            <button onClick={() => {setZoomLevel(0.8); if(typeof window !== 'undefined') setTranslate({x: window.innerWidth/2, y: 150});}} className="w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center text-xs font-bold text-stone-600 hover:text-primary transition-colors mt-2">Reset</button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Modal / Side Panel */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm md:justify-end md:p-0">
+          <div className="fixed inset-0 z-50 flex items-center justify-end">
             <motion.div 
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 100 }}
-              className="bg-white w-full max-w-md h-full max-h-[90vh] md:max-h-screen md:h-screen shadow-2xl overflow-y-auto flex flex-col rounded-xl md:rounded-none"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowModal(false)}
+              className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 100 }}
+              className="bg-white w-full max-w-md h-full max-h-[90vh] md:max-h-screen md:h-screen shadow-2xl overflow-y-auto flex flex-col rounded-xl md:rounded-none z-10 relative"
             >
               <div className="p-4 border-b border-stone-100 flex justify-between items-center bg-stone-50 sticky top-0 z-10">
                 <h3 className="text-xl font-serif text-primary">
-                  {modalMode === 'add_relative' ? 'Add a Family Member' : 'Claim Relationship'}
+                  {selectedPerson ? `How are you related to ${selectedPerson.full_name}?` : 'Add Family Member'}
                 </h3>
-                <button 
-                  onClick={() => setShowModal(false)}
-                  className="text-stone-400 hover:text-stone-600 p-2"
-                >
+                <button type="button" onClick={() => setShowModal(false)} className="text-stone-400 hover:text-stone-600 p-2">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
               
-              <div className="p-6">
-                {modalMode === 'claim_relationship' && selectedPerson && (
-                  <div className="flex items-center gap-4 mb-8 bg-stone-50 p-4 rounded-lg border border-stone-100">
-                    <img src={selectedPerson.photo_url || "https://images.unsplash.com/photo-1544502062-f82887f03d1c?q=80&w=200"} className="w-16 h-16 rounded-full object-cover border border-stone-200" />
-                    <div>
-                      <p className="font-bold text-stone-800">{selectedPerson.full_name}</p>
-                      <p className="text-sm text-stone-500">{selectedPerson.birth_year || '?'} - {selectedPerson.death_year || '?'}</p>
-                    </div>
-                  </div>
-                )}
-
-                {modalMode === 'add_relative' && (
-                  <div className="mb-6 bg-primary/10 text-primary p-4 rounded-lg border border-primary/20 text-sm">
-                    Adding a <strong>{selectedPlaceholderType}</strong> to the family tree.
+              <div className="p-6 flex-1 flex flex-col">
+                {selectedPerson && (
+                  <div className="flex gap-2 mb-6 p-1 bg-stone-100 rounded-lg">
+                    <button 
+                      className={`flex-1 py-2 text-sm font-medium rounded-md transition ${requestType === 'new_node' ? 'bg-white shadow-sm text-primary' : 'text-stone-500 hover:text-stone-700'}`}
+                      onClick={() => setRequestType('new_node')}
+                    >
+                      Add Connection
+                    </button>
+                    <button 
+                      className={`flex-1 py-2 text-sm font-medium rounded-md transition ${requestType === 'edit_node' ? 'bg-white shadow-sm text-primary' : 'text-stone-500 hover:text-stone-700'}`}
+                      onClick={() => {
+                        setRequestType('edit_node');
+                        setIsDeceasedForm(selectedPerson.is_deceased !== false);
+                      }}
+                    >
+                      Suggest Edit
+                    </button>
                   </div>
                 )}
 
                 {success ? (
-                  <div className="bg-green-50 text-green-800 p-6 rounded-lg text-center">
+                  <div className="bg-green-50 text-green-800 p-6 rounded-lg text-center my-auto">
                     <svg className="w-12 h-12 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"></path></svg>
-                    <p className="font-medium text-lg mb-2">Submitted Successfully</p>
-                    <p className="text-sm">Your submission is pending review by the family administrators. Thank you!</p>
+                    <p className="font-medium text-lg mb-2">Request Submitted Successfully</p>
+                    <p className="text-sm mt-2 mb-6">Your submission is pending review by the family administrators. Thank you for contributing!</p>
+                    <button 
+                      onClick={() => {
+                        setSuccess(false);
+                        setUploadDataUrl(null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }} 
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition text-sm font-medium"
+                    >
+                      Submit Another Request
+                    </button>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* Add Relative Fields */}
-                    {modalMode === 'add_relative' && (
+                    
+                    {/* NEW NODE MODE */}
+                    {requestType === 'new_node' && selectedPerson && (
+                      <div className="space-y-2 pb-4 border-b border-stone-100">
+                        <label className="block text-sm font-bold text-stone-800 mb-1">Relationship Type *</label>
+                        <select 
+                          value={connectionType} 
+                          onChange={(e) => setConnectionType(e.target.value)}
+                          className="w-full px-3 py-3 border border-primary/30 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-primary/5 font-medium text-primary"
+                        >
+                          <option value="child">Child</option>
+                          <option value="parent">Parent</option>
+                          <option value="spouse">Spouse</option>
+                          <option value="sibling">Sibling</option>
+                          <option value="cousin">Cousin</option>
+                          <option value="in-law">In-law</option>
+                          <option value="godparent">Godparent</option>
+                          <option value="other">Other...</option>
+                        </select>
+                        {connectionType === 'other' && (
+                           <input required type="text" placeholder="Please specify..." value={customConnection} onChange={e => setCustomConnection(e.target.value)} className="w-full mt-2 px-3 py-2 border border-stone-300 rounded-md focus:ring-1 focus:ring-primary" />
+                        )}
+                      </div>
+                    )}
+
+                    {requestType === 'new_node' && (
                       <div className="space-y-4 pb-4 border-b border-stone-100">
-                        <h4 className="font-medium text-stone-800">New Relative Details</h4>
+                        <h4 className="font-medium text-stone-800 text-lg">Details of Relative</h4>
                         <div>
                           <label className="block text-sm font-medium text-stone-700 mb-1">Full Name *</label>
                           <input required name="new_relative_name" type="text" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
                         </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-stone-700 mb-1">Status</label>
+                          <div className="flex gap-4 bg-stone-50 p-2 rounded-md border border-stone-200">
+                            <label className="flex items-center gap-2 cursor-pointer px-2">
+                              <input type="radio" name="is_deceased" checked={isDeceasedForm} onChange={() => setIsDeceasedForm(true)} className="text-primary focus:ring-primary" />
+                              <span className="text-sm font-medium text-stone-700">Deceased</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer px-2">
+                              <input type="radio" name="is_deceased" checked={!isDeceasedForm} onChange={() => setIsDeceasedForm(false)} className="text-primary focus:ring-primary" />
+                              <span className="text-sm font-medium text-stone-700">Alive</span>
+                            </label>
+                          </div>
+                        </div>
+
                         <div className="flex gap-4">
                           <div className="flex-1">
-                            <label className="block text-sm font-medium text-stone-700 mb-1">Birth Year</label>
+                            <label className="block text-sm font-medium text-stone-700 mb-1">Birth Year/Date</label>
                             <input name="new_relative_birth" type="text" placeholder="YYYY" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
                           </div>
-                          <div className="flex-1">
-                            <label className="block text-sm font-medium text-stone-700 mb-1">Death Year</label>
-                            <input name="new_relative_death" type="text" placeholder="YYYY" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
-                          </div>
+                          {isDeceasedForm && (
+                            <div className="flex-1">
+                              <label className="block text-sm font-medium text-stone-700 mb-1">Death Year/Date</label>
+                              <input name="new_relative_death" type="text" placeholder="YYYY" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-stone-700 mb-1">Bio / Memories (Optional)</label>
+                          <textarea name="bio" rows={3} className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"></textarea>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-stone-700 mb-1">Contact Info (Optional)</label>
+                          <input name="contact_info" type="text" placeholder="Email, phone, or address" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
                         </div>
                       </div>
                     )}
 
-                    {/* Common Fields */}
+                    {/* EDIT NODE MODE */}
+                    {requestType === 'edit_node' && selectedPerson && (
+                      <div className="space-y-4 pb-4 border-b border-stone-100 bg-stone-50 p-4 rounded-md">
+                        <h4 className="font-medium text-stone-800">Suggest Edits for {selectedPerson.full_name}</h4>
+                        <p className="text-xs text-stone-500 mb-4">Only fill out fields you want to change.</p>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-stone-700 mb-1">Corrected Name</label>
+                          <input name="edit_name" type="text" defaultValue={selectedPerson.full_name} className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
+                        </div>
+
+                        <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer px-2">
+                              <input type="radio" name="edit_is_deceased" checked={isDeceasedForm} onChange={() => setIsDeceasedForm(true)} className="text-primary focus:ring-primary" />
+                              <span className="text-sm font-medium text-stone-700">Deceased</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer px-2">
+                              <input type="radio" name="edit_is_deceased" checked={!isDeceasedForm} onChange={() => setIsDeceasedForm(false)} className="text-primary focus:ring-primary" />
+                              <span className="text-sm font-medium text-stone-700">Alive</span>
+                            </label>
+                        </div>
+
+                        <div className="flex gap-4">
+                          <div className="flex-1">
+                            <label className="block text-sm font-medium text-stone-700 mb-1">Birth Year/Date</label>
+                            <input name="edit_birth" type="text" defaultValue={selectedPerson.birth_year || ''} className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
+                          </div>
+                          {isDeceasedForm && (
+                            <div className="flex-1">
+                              <label className="block text-sm font-medium text-stone-700 mb-1">Death Year/Date</label>
+                              <input name="edit_death" type="text" defaultValue={selectedPerson.death_year || ''} className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-stone-700 mb-1">Update Bio</label>
+                          <textarea name="bio" rows={3} defaultValue={selectedPerson.bio || ''} className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"></textarea>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-stone-700 mb-1">Update Contact Info</label>
+                          <input name="contact_info" type="text" defaultValue={selectedPerson.contact_info || ''} className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-4 pb-4 border-b border-stone-100">
+                      <h4 className="font-medium text-stone-800 text-lg">{requestType === 'edit_node' ? 'New Photo' : 'Photo'}</h4>
+                      <div className="flex flex-col gap-2">
+                        <label className="block text-sm font-medium text-stone-700">Upload Photo (Optional)</label>
+                        <input 
+                           type="file" 
+                           accept="image/*"
+                           capture="environment"
+                           ref={fileInputRef}
+                           onChange={handleImageUpload}
+                           className="hidden"
+                        />
+                        <div className="flex items-center gap-4">
+                           <button type="button" onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md text-sm border border-stone-300 transition flex items-center gap-2">
+                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                             {uploadingImage ? 'Processing...' : 'Choose File or Camera'}
+                           </button>
+                           {uploadDataUrl && <div className="w-12 h-12 rounded-full border-2 border-stone-200 shadow-sm overflow-hidden"><img src={uploadDataUrl} className="w-full h-full object-cover" /></div>}
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="space-y-4">
-                      <h4 className="font-medium text-stone-800">Your Information</h4>
+                      <h4 className="font-medium text-stone-800 text-lg">Your Information</h4>
                       
                       <div>
                         <label className="block text-sm font-medium text-stone-700 mb-1">
-                          {modalMode === 'claim_relationship' ? `How are you related to ${selectedPerson?.full_name}? *` : 'How are you related to the person you are adding? *'}
+                          How are you related to the family? *
                         </label>
-                        <select required name="submitter_relationship" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white">
-                          <option value="">Select relationship...</option>
-                          <option value="Child">Child</option>
-                          <option value="Grandchild">Grandchild</option>
-                          <option value="Spouse">Spouse</option>
-                          <option value="Sibling">Sibling</option>
-                          <option value="Niece/Nephew">Niece/Nephew</option>
-                          <option value="Cousin">Cousin</option>
-                          <option value="In-law">In-law</option>
-                          <option value="Other">Other / Parent</option>
-                        </select>
+                        <input required name="submitter_relationship" type="text" placeholder="e.g. I am John's son" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
                       </div>
 
                       <div>
@@ -485,27 +631,22 @@ export default function FamilyTreeClient() {
                         <input required name="submitter_name" type="text" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
                       </div>
                       
-                      <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-1">Email Address (Optional)</label>
-                        <input name="submitter_email" type="email" placeholder="For contact list updates" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-1">Phone Number (Optional)</label>
-                        <input name="submitter_phone" type="tel" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-1">Attach a Photo URL (Optional)</label>
-                        <input name="photo_url" type="url" placeholder="https://..." className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
-                        <p className="text-xs text-stone-500 mt-1">Provide an image link to attach to this person's record.</p>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-stone-700 mb-1">Email (Optional)</label>
+                          <input name="submitter_email" type="email" placeholder="For contact" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-stone-700 mb-1">Phone (Optional)</label>
+                          <input name="submitter_phone" type="tel" className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" />
+                        </div>
                       </div>
                     </div>
 
                     <button 
                       type="submit" 
-                      disabled={isSubmitting}
-                      className="w-full bg-primary text-white py-3 px-4 rounded-md hover:bg-stone-800 transition-colors disabled:opacity-50 font-medium mt-6"
+                      disabled={isSubmitting || uploadingImage}
+                      className="w-full bg-primary text-white py-3 px-4 rounded-md hover:bg-stone-800 transition-colors disabled:opacity-50 font-medium mt-6 text-lg"
                     >
                       {isSubmitting ? 'Submitting...' : 'Submit to Moderation Queue'}
                     </button>

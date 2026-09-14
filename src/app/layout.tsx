@@ -43,6 +43,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body 
+        suppressHydrationWarning
         className={`${inter.variable} ${playfair.variable} antialiased bg-stone-50 text-stone-900 font-sans`}
         style={{
           '--color-primary': primaryColor,
