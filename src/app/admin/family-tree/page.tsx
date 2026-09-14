@@ -71,15 +71,43 @@ export default function AdminFamilyTreePage() {
           .single();
         if (nodeErr) throw nodeErr;
 
-        // 2. Insert Edges
+        // 2. Insert Edges intelligently
         if (edges && edges.length > 0) {
-          const edgesToInsert = edges.map((e: any) => ({
-            from_node_id: insertedNode.id,
-            to_node_id: e.target_node_id,
-            relationship_type: e.relationship_type
-          }));
-          const { error: edgeErr } = await supabase.from('family_tree_edges').insert(edgesToInsert);
-          if (edgeErr) throw edgeErr;
+          for (const e of edges) {
+            const targetId = e.target_node_id;
+            const newId = insertedNode.id;
+            const type = e.relationship_type.toLowerCase();
+            
+            if (type === 'child') {
+              // new node is child of target node
+              await supabase.from('family_tree_edges').insert({ from_node_id: targetId, to_node_id: newId, relationship_type: 'parent_child' });
+            } else if (type === 'parent' || type === 'father' || type === 'mother') {
+              // new node is parent of target node
+              await supabase.from('family_tree_edges').insert({ from_node_id: newId, to_node_id: targetId, relationship_type: 'parent_child' });
+            } else if (type === 'spouse') {
+              // spouse is bidirectional, just store one consistent direction
+              await supabase.from('family_tree_edges').insert({ from_node_id: targetId, to_node_id: newId, relationship_type: 'spouse' });
+            } else if (type === 'sibling') {
+              // sibling: find parents of target node and link them to new node
+              const { data: parents } = await supabase
+                .from('family_tree_edges')
+                .select('from_node_id')
+                .eq('to_node_id', targetId)
+                .eq('relationship_type', 'parent_child');
+              
+              if (parents && parents.length > 0) {
+                for (const p of parents) {
+                  await supabase.from('family_tree_edges').insert({ from_node_id: p.from_node_id, to_node_id: newId, relationship_type: 'parent_child' });
+                }
+              } else {
+                // If no parents exist, create a direct sibling edge
+                await supabase.from('family_tree_edges').insert({ from_node_id: targetId, to_node_id: newId, relationship_type: 'sibling' });
+              }
+            } else {
+              // cousin, godparent, etc.
+              await supabase.from('family_tree_edges').insert({ from_node_id: targetId, to_node_id: newId, relationship_type: type });
+            }
+          }
         }
       } else if (req.request_type === 'edit_node') {
         const { edit_target_id, changes } = req.proposed_data;

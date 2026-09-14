@@ -141,8 +141,8 @@ export default function FamilyTreeClient() {
     const processedIds = new Set<string>();
     
     // Helpers to find relationships
-    const getChildrenEdges = (parentId: string) => edges.filter(e => e.relationship_type === 'child' && e.from_node_id === parentId);
-    const getParentEdges = (childId: string) => edges.filter(e => e.relationship_type === 'child' && e.to_node_id === childId);
+    const getChildrenEdges = (parentId: string) => edges.filter(e => e.relationship_type === 'parent_child' && e.from_node_id === parentId);
+    const getParentEdges = (childId: string) => edges.filter(e => e.relationship_type === 'parent_child' && e.to_node_id === childId);
     
     // Identify roots (nodes that are not children of anyone)
     const rootNodes = members.filter(m => getParentEdges(m.id).length === 0);
@@ -181,7 +181,7 @@ export default function FamilyTreeClient() {
       // Find other edges (cousin, godparent, etc) for this node to display in UI if needed
       const otherEdges = edges.filter(e => 
         (e.from_node_id === person.id || e.to_node_id === person.id) && 
-        !['child', 'spouse', 'parent'].includes(e.relationship_type)
+        !['parent_child', 'spouse'].includes(e.relationship_type)
       );
 
       return {
@@ -289,9 +289,9 @@ export default function FamilyTreeClient() {
       const { error } = await supabase.from('family_tree_requests').insert([data]);
       if (error) throw error;
       setSuccess(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to submit. Please try again.');
+      alert('Failed to submit: ' + (err.message || JSON.stringify(err)));
     } finally {
       setIsSubmitting(false);
     }
