@@ -34,7 +34,7 @@ export default function Hero() {
       >
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1511895426328-dc8714191300?q=80&w=2940&auto=format&fit=crop")' }}
+          style={{ backgroundImage: 'url("family-photo.jpeg")' }}
         />
         {/* Dark Overlay for better text readability */}
         <div className="absolute inset-0 bg-black/40" />
