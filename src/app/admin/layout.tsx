@@ -46,6 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <Link href="/admin/tributes" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 md:py-2 px-4 md:px-3 rounded-lg hover:bg-stone-100 text-stone-700 font-medium">Manage Tributes</Link>
       <Link href="/admin/memories" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 md:py-2 px-4 md:px-3 rounded-lg hover:bg-stone-100 text-stone-700 font-medium">Moderate Memories</Link>
       <Link href="/admin/family-tree" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 md:py-2 px-4 md:px-3 rounded-lg hover:bg-stone-100 text-stone-700 font-medium">Moderate Family</Link>
+      <Link href="/admin/gallery" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 md:py-2 px-4 md:px-3 rounded-lg hover:bg-stone-100 text-stone-700 font-medium">Manage Gallery</Link>
     </>
   );
 

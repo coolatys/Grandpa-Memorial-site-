@@ -26,6 +26,12 @@ export default function AdminDashboard() {
           <p className="text-sm text-stone-500 mb-4">Approve new relatives adding themselves.</p>
           <a href="/admin/family-tree" className="text-primary hover:underline text-sm">Go to Submissions &rarr;</a>
         </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-stone-100">
+          <h3 className="font-medium text-lg mb-2">Photo Gallery</h3>
+          <p className="text-sm text-stone-500 mb-4">Upload and remove photos from the live gallery.</p>
+          <a href="/admin/gallery" className="text-primary hover:underline text-sm">Manage Gallery &rarr;</a>
+        </div>
       </div>
     </div>
   );
